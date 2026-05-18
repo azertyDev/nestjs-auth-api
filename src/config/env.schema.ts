@@ -36,6 +36,9 @@ export const envSchema = z
       .transform((v) => v === 'true'),
 
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+
+    ADMIN_EMAIL: z.string().min(3).optional(),
+    ADMIN_PASSWORD: z.string().min(8).max(128).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.JWT_ACCESS_SECRET === data.JWT_REFRESH_SECRET) {
@@ -43,6 +46,15 @@ export const envSchema = z
         code: z.ZodIssueCode.custom,
         message: 'JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must differ',
         path: ['JWT_REFRESH_SECRET'],
+      });
+    }
+    const emailSet = Boolean(data.ADMIN_EMAIL);
+    const passwordSet = Boolean(data.ADMIN_PASSWORD);
+    if (emailSet !== passwordSet) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'ADMIN_EMAIL and ADMIN_PASSWORD must be set together',
+        path: [emailSet ? 'ADMIN_PASSWORD' : 'ADMIN_EMAIL'],
       });
     }
   });

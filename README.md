@@ -80,6 +80,31 @@ See `.env.example`. All vars are validated by Zod (`src/config/env.schema.ts`) �
 | `ENABLE_SWAGGER` | no | `true`/`false` |
 | `LOG_LEVEL` | no | pino level |
 
+## Initial admin
+
+Set `ADMIN_EMAIL` + `ADMIN_PASSWORD` in `.env` and the app seeds a single ADMIN user on boot via `prisma db seed` (chained after `migrate deploy` in `docker-compose.yml`).
+
+```env
+ADMIN_EMAIL=admin@local.dev          # must be RFC-valid email (TLD required)
+ADMIN_PASSWORD=Local-AdminP@ss1      # min 8, upper + lower + digit
+```
+
+Behavior:
+- **Both unset** → seed skips silently (`[seed] ADMIN_EMAIL not set, skipping`)
+- **Only one set** → boot fails fast with `ADMIN_EMAIL and ADMIN_PASSWORD must be set together` (validated by Zod)
+- **First run** → creates user with `role=ADMIN`, password hashed via argon2id
+- **Re-run with same password** → idempotent, logs `admin already up to date`, no DB write
+- **Re-run with changed password** → updates `passwordHash`, keeps `role=ADMIN`
+
+Rotate the admin password by changing `ADMIN_PASSWORD` in env and restarting the container — next seed run updates the hash.
+
+Login:
+```bash
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"email":"admin@local.dev","password":"Local-AdminP@ss1"}' \
+  http://localhost:3100/auth/login
+```
+
 ## Security Notes
 
 - **Always serve over HTTPS** in production; the app sets `trust proxy` for X-Forwarded-* headers — make sure the reverse proxy is trusted.

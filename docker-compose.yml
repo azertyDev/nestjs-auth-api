@@ -43,9 +43,11 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3100}
       ENABLE_SWAGGER: ${ENABLE_SWAGGER:-true}
       LOG_LEVEL: info
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     ports:
       - "${API_HOST_PORT:-3100}:3100"
-    command: sh -c "npx prisma migrate deploy && node dist/main.js"
+    command: sh -c "npx prisma migrate deploy && npx prisma db seed && node dist/main.js"
 
 volumes:
   auth-api-db-data:
