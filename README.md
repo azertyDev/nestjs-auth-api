@@ -118,3 +118,36 @@ prisma/
 ## License
 
 MIT
+
+## Postman / Newman
+
+Collection + environment live at `.omc/research/postman-collection.json` and `postman-environment.json`.
+
+```bash
+# Run the full suite (skips admin tests if adminAccessToken is empty)
+npx newman run .omc/research/postman-collection.json -e .omc/research/postman-environment.json
+```
+
+Admin tests (`List users (admin) - *`) are gated by the `adminAccessToken` collection variable. To run them:
+
+```bash
+# 1. Register and login a user, capture access token
+EMAIL="admin+$(date +%s)@example.com"
+TOKEN=$(curl -s -X POST -H "Content-Type: application/json" \
+  -d "{\"email\":\"$EMAIL\",\"password\":\"StrongP@ss1\"}" \
+  http://localhost:3100/auth/register | jq -r .accessToken)
+
+# 2. Promote that user to ADMIN
+docker exec auth-api-db psql -U authapi -d auth_db \
+  -c "UPDATE users SET role='ADMIN' WHERE email='$EMAIL';"
+
+# 3. Re-login to get a fresh JWT with role=ADMIN
+ADMIN_TOKEN=$(curl -s -X POST -H "Content-Type: application/json" \
+  -d "{\"email\":\"$EMAIL\",\"password\":\"StrongP@ss1\"}" \
+  http://localhost:3100/auth/login | jq -r .accessToken)
+
+# 4. Run newman with adminAccessToken set
+npx newman run .omc/research/postman-collection.json \
+  -e .omc/research/postman-environment.json \
+  --env-var adminAccessToken="$ADMIN_TOKEN"
+```

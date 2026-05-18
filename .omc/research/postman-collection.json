@@ -5,98 +5,6 @@
       "description": "Full flow + auto-refresh + userId from JWT sub",
       "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
-    "event": [
-      {
-        "listen": "prerequest",
-        "script": {
-          "type": "text/javascript",
-          "exec": [
-            "const access = pm.collectionVariables.get('accessToken');",
-            "const refresh = pm.collectionVariables.get('refreshToken');",
-            "if (!access || !refresh) return;",
-            "const url = pm.request.url.toString();",
-            "if (url.includes('/auth/refresh') || url.includes('/auth/register') || url.includes('/auth/login')) return;",
-            "let exp;",
-            "try {",
-            "  const part = access.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');",
-            "  const pad = part + '='.repeat((4 - part.length % 4) % 4);",
-            "  exp = JSON.parse(Buffer.from(pad,'base64').toString('utf8')).exp;",
-            "} catch (e) { return; }",
-            "const now = Math.floor(Date.now()/1000);",
-            "if (exp - now > 30) return;",
-            "console.log('access expiring in', exp - now, 's — auto-refresh');",
-            "const beforeAccess = access;",
-            "pm.sendRequest({",
-            "  url: pm.variables.get('baseUrl') + '/auth/refresh',",
-            "  method: 'POST',",
-            "  header: { 'Content-Type': 'application/json' },",
-            "  body: { mode: 'raw', raw: JSON.stringify({ refreshToken: refresh }) },",
-            "}, (err, res) => {",
-            "  if (err || res.code !== 200) { console.warn('auto-refresh failed', err || res.code); return; }",
-            "  const j = res.json();",
-            "  pm.collectionVariables.set('oldRefreshToken', refresh);",
-            "  pm.collectionVariables.set('accessToken', j.accessToken);",
-            "  pm.collectionVariables.set('refreshToken', j.refreshToken);",
-            "  pm.collectionVariables.set('autoRefreshFired', '1');",
-            "  pm.collectionVariables.set('autoRefreshPrevAccess', beforeAccess);",
-            "  try {",
-            "    const p = j.accessToken.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');",
-            "    const pad = p + '='.repeat((4 - p.length % 4) % 4);",
-            "    const payload = JSON.parse(Buffer.from(pad,'base64').toString('utf8'));",
-            "    if (payload.sub) pm.collectionVariables.set('userId', payload.sub);",
-            "  } catch (e) {}",
-            "});"
-          ]
-        }
-      }
-    ],
-    "variable": [
-      {
-        "key": "baseUrl",
-        "value": "http://localhost:3100",
-        "type": "string"
-      },
-      {
-        "key": "accessToken",
-        "value": "",
-        "type": "string"
-      },
-      {
-        "key": "refreshToken",
-        "value": "",
-        "type": "string"
-      },
-      {
-        "key": "oldRefreshToken",
-        "value": "",
-        "type": "string"
-      },
-      {
-        "key": "userId",
-        "value": "",
-        "type": "string"
-      },
-      {
-        "key": "autoRefreshFired",
-        "value": "",
-        "type": "string"
-      },
-      {
-        "key": "autoRefreshPrevAccess",
-        "value": "",
-        "type": "string"
-      },
-      {
-        "key": "email",
-        "value": "alice@example.com",
-        "type": "string"
-      },
-      {
-        "key": "password",
-        "value": "StrongP@ss1",
-        "type": "string"
-      }
-    ],
     "item": [
       {
         "name": "Auth",
@@ -156,7 +64,8 @@
                   "register"
                 ]
               }
-            }
+            },
+            "response": []
           },
           {
             "name": "Login",
@@ -213,7 +122,8 @@
                   "login"
                 ]
               }
-            }
+            },
+            "response": []
           },
           {
             "name": "Login wrong",
@@ -255,7 +165,8 @@
                   "login"
                 ]
               }
-            }
+            },
+            "response": []
           },
           {
             "name": "Me",
@@ -274,13 +185,6 @@
               }
             ],
             "request": {
-              "method": "GET",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
               "auth": {
                 "type": "bearer",
                 "bearer": [
@@ -291,6 +195,13 @@
                   }
                 ]
               },
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "url": {
                 "raw": "{{baseUrl}}/auth/me",
                 "host": [
@@ -301,7 +212,8 @@
                   "me"
                 ]
               }
-            }
+            },
+            "response": []
           },
           {
             "name": "Me no token",
@@ -334,7 +246,8 @@
                   "me"
                 ]
               }
-            }
+            },
+            "response": []
           },
           {
             "name": "Force-expire access (setup)",
@@ -377,7 +290,8 @@
                   "health"
                 ]
               }
-            }
+            },
+            "response": []
           },
           {
             "name": "Auto-refresh test (Me)",
@@ -402,13 +316,6 @@
               }
             ],
             "request": {
-              "method": "GET",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
               "auth": {
                 "type": "bearer",
                 "bearer": [
@@ -419,6 +326,13 @@
                   }
                 ]
               },
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "url": {
                 "raw": "{{baseUrl}}/auth/me",
                 "host": [
@@ -429,7 +343,8 @@
                   "me"
                 ]
               }
-            }
+            },
+            "response": []
           },
           {
             "name": "Refresh",
@@ -487,7 +402,8 @@
                   "refresh"
                 ]
               }
-            }
+            },
+            "response": []
           },
           {
             "name": "Refresh REUSE old",
@@ -530,7 +446,8 @@
                   "refresh"
                 ]
               }
-            }
+            },
+            "response": []
           },
           {
             "name": "Logout",
@@ -546,13 +463,6 @@
               }
             ],
             "request": {
-              "method": "POST",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
               "auth": {
                 "type": "bearer",
                 "bearer": [
@@ -563,6 +473,13 @@
                   }
                 ]
               },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": {
                 "mode": "raw",
                 "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
@@ -582,7 +499,8 @@
                   "logout"
                 ]
               }
-            }
+            },
+            "response": []
           },
           {
             "name": "Logout-all",
@@ -598,13 +516,6 @@
               }
             ],
             "request": {
-              "method": "POST",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
               "auth": {
                 "type": "bearer",
                 "bearer": [
@@ -615,6 +526,13 @@
                   }
                 ]
               },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "url": {
                 "raw": "{{baseUrl}}/auth/logout-all",
                 "host": [
@@ -625,7 +543,8 @@
                   "logout-all"
                 ]
               }
-            }
+            },
+            "response": []
           }
         ]
       },
@@ -633,15 +552,14 @@
         "name": "Users",
         "item": [
           {
-            "name": "Get user by id",
+            "name": "List users (admin) - 403 for USER",
             "event": [
               {
                 "listen": "test",
                 "script": {
                   "type": "text/javascript",
                   "exec": [
-                    "pm.test(\"200\",()=>pm.response.to.have.status(200));",
-                    "pm.test(\"id matches\",()=>pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"userId\")));"
+                    "pm.test('403 Forbidden for non-admin',()=>pm.response.to.have.status(403));"
                   ]
                 }
               }
@@ -665,6 +583,269 @@
                 ]
               },
               "url": {
+                "raw": "{{baseUrl}}/users?page=1&limit=5",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "users"
+                ],
+                "query": [
+                  {
+                    "key": "page",
+                    "value": "1"
+                  },
+                  {
+                    "key": "limit",
+                    "value": "5"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "List users (admin) - 200 with pagination",
+            "event": [
+              {
+                "listen": "prerequest",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "if (!pm.collectionVariables.get('adminAccessToken')) {",
+                    "  console.warn('[skip] requires adminAccessToken — promote a user to ADMIN and set collection var first');",
+                    "  pm.execution.skipRequest();",
+                    "}"
+                  ]
+                }
+              },
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('200 OK',()=>pm.response.to.have.status(200));",
+                    "const j = pm.response.json();",
+                    "pm.test('paginated shape',()=>{",
+                    "  pm.expect(j).to.have.property('data').that.is.an('array');",
+                    "  pm.expect(j).to.have.property('total').that.is.a('number');",
+                    "  pm.expect(j).to.have.property('page').that.eql(1);",
+                    "  pm.expect(j).to.have.property('limit').that.eql(5);",
+                    "  pm.expect(j).to.have.property('totalPages').that.is.a('number');",
+                    "});",
+                    "pm.test('items are PublicUser (no passwordHash)',()=>{",
+                    "  for (const u of j.data) {",
+                    "    pm.expect(u).to.have.property('id');",
+                    "    pm.expect(u).to.have.property('email');",
+                    "    pm.expect(u).to.have.property('role');",
+                    "    pm.expect(u).to.not.have.property('passwordHash');",
+                    "  }",
+                    "});",
+                    "pm.test('size respects limit',()=>pm.expect(j.data.length).to.be.at.most(5));"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{adminAccessToken}}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "url": {
+                "raw": "{{baseUrl}}/users?page=1&limit=5",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "users"
+                ],
+                "query": [
+                  {
+                    "key": "page",
+                    "value": "1"
+                  },
+                  {
+                    "key": "limit",
+                    "value": "5"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "List users (admin) - search by email",
+            "event": [
+              {
+                "listen": "prerequest",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "if (!pm.collectionVariables.get('adminAccessToken')) {",
+                    "  console.warn('[skip] requires adminAccessToken — promote a user to ADMIN and set collection var first');",
+                    "  pm.execution.skipRequest();",
+                    "}"
+                  ]
+                }
+              },
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('200 OK',()=>pm.response.to.have.status(200));",
+                    "const j = pm.response.json();",
+                    "pm.test('search filters results',()=>{",
+                    "  const q = pm.variables.get('email').split('@')[0];",
+                    "  for (const u of j.data) pm.expect(u.email.toLowerCase()).to.include(q.toLowerCase());",
+                    "});"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{adminAccessToken}}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "url": {
+                "raw": "{{baseUrl}}/users?search={{email}}&limit=20",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "users"
+                ],
+                "query": [
+                  {
+                    "key": "search",
+                    "value": "{{email}}"
+                  },
+                  {
+                    "key": "limit",
+                    "value": "20"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "List users - validation rejects bad limit",
+            "event": [
+              {
+                "listen": "prerequest",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "if (!pm.collectionVariables.get('adminAccessToken')) {",
+                    "  console.warn('[skip] requires adminAccessToken — promote a user to ADMIN and set collection var first');",
+                    "  pm.execution.skipRequest();",
+                    "}"
+                  ]
+                }
+              },
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('400 Bad Request',()=>pm.response.to.have.status(400));"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{adminAccessToken}}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "url": {
+                "raw": "{{baseUrl}}/users?limit=500",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "users"
+                ],
+                "query": [
+                  {
+                    "key": "limit",
+                    "value": "500"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "Get user by id",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"200\",()=>pm.response.to.have.status(200));",
+                    "pm.test(\"id matches\",()=>pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"userId\")));"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{accessToken}}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "url": {
                 "raw": "{{baseUrl}}/users/{{userId}}",
                 "host": [
                   "{{baseUrl}}"
@@ -674,7 +855,8 @@
                   "{{userId}}"
                 ]
               }
-            }
+            },
+            "response": []
           }
         ]
       },
@@ -712,9 +894,98 @@
                   "health"
                 ]
               }
-            }
+            },
+            "response": []
           }
         ]
+      }
+    ],
+    "event": [
+      {
+        "listen": "prerequest",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "const access = pm.collectionVariables.get('accessToken');",
+            "const refresh = pm.collectionVariables.get('refreshToken');",
+            "if (!access || !refresh) return;",
+            "const url = pm.request.url.toString();",
+            "if (url.includes('/auth/refresh') || url.includes('/auth/register') || url.includes('/auth/login')) return;",
+            "let exp;",
+            "try {",
+            "  const part = access.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');",
+            "  const pad = part + '='.repeat((4 - part.length % 4) % 4);",
+            "  exp = JSON.parse(Buffer.from(pad,'base64').toString('utf8')).exp;",
+            "} catch (e) { return; }",
+            "const now = Math.floor(Date.now()/1000);",
+            "if (exp - now > 30) return;",
+            "console.log('access expiring in', exp - now, 's — auto-refresh');",
+            "const beforeAccess = access;",
+            "pm.sendRequest({",
+            "  url: pm.variables.get('baseUrl') + '/auth/refresh',",
+            "  method: 'POST',",
+            "  header: { 'Content-Type': 'application/json' },",
+            "  body: { mode: 'raw', raw: JSON.stringify({ refreshToken: refresh }) },",
+            "}, (err, res) => {",
+            "  if (err || res.code !== 200) { console.warn('auto-refresh failed', err || res.code); return; }",
+            "  const j = res.json();",
+            "  pm.collectionVariables.set('oldRefreshToken', refresh);",
+            "  pm.collectionVariables.set('accessToken', j.accessToken);",
+            "  pm.collectionVariables.set('refreshToken', j.refreshToken);",
+            "  pm.collectionVariables.set('autoRefreshFired', '1');",
+            "  pm.collectionVariables.set('autoRefreshPrevAccess', beforeAccess);",
+            "  try {",
+            "    const p = j.accessToken.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');",
+            "    const pad = p + '='.repeat((4 - p.length % 4) % 4);",
+            "    const payload = JSON.parse(Buffer.from(pad,'base64').toString('utf8'));",
+            "    if (payload.sub) pm.collectionVariables.set('userId', payload.sub);",
+            "  } catch (e) {}",
+            "});"
+          ]
+        }
+      }
+    ],
+    "variable": [
+      {
+        "key": "baseUrl",
+        "value": "http://localhost:3100"
+      },
+      {
+        "key": "accessToken",
+        "value": ""
+      },
+      {
+        "key": "refreshToken",
+        "value": ""
+      },
+      {
+        "key": "oldRefreshToken",
+        "value": ""
+      },
+      {
+        "key": "userId",
+        "value": ""
+      },
+      {
+        "key": "autoRefreshFired",
+        "value": ""
+      },
+      {
+        "key": "autoRefreshPrevAccess",
+        "value": ""
+      },
+      {
+        "key": "email",
+        "value": "alice@example.com"
+      },
+      {
+        "key": "password",
+        "value": "StrongP@ss1"
+      },
+      {
+        "key": "adminAccessToken",
+        "value": "",
+        "type": "string"
       }
     ]
   }
