@@ -1,0 +1,48 @@
+Add new endpoint to existing NestJS auth API.
+
+## Task
+GET /users — return paginated list of users.
+
+## Requirements
+- **Path**: GET /users
+- **Auth**: requires access JWT + role=ADMIN (use existing Roles guard + decorator)
+- **Query params** (validated via DTO with class-validator):
+  - page: integer, default 1, min 1
+  - limit: integer, default 20, min 1, max 100
+  - search: optional string, filters by email substring (case-insensitive)
+- **Response shape**:
+  ```
+  {
+    "data": PublicUserDto[],     // uses existing toPublicUser mapper — NEVER include passwordHash
+    "total": number,
+    "page": number,
+    "limit": number,
+    "totalPages": number
+  }
+  ```
+- **DB**: use existing PrismaService, single transaction with count + findMany
+- **Swagger**: @ApiBearerAuth, @ApiOperation, @ApiQuery, @ApiResponse
+- **Throttle**: default global is fine
+
+## Files to touch
+- src/users/dto/list-users-query.dto.ts (new — DTO with class-validator + Transform for query parsing)
+- src/users/dto/users-list-response.dto.ts (new — Swagger response type)
+- src/users/users.service.ts (add list method, single $transaction)
+- src/users/users.controller.ts (add GET / endpoint guarded by Roles(ADMIN))
+- Reuse existing toPublicUser mapper from src/users/dto/public-user.dto.ts
+
+## Constraints
+- Follow .claude/rules/coding-style.md: immutable patterns, small files, no any
+- Strict TypeScript, no any
+- Match existing code style (look at src/users/users.controller.ts for guard/decorator pattern, see Roles guard usage in src/auth/decorators/roles.decorator.ts and src/auth/guards/roles.guard.ts)
+- Add unit test in src/users/users.service.spec.ts (NEW file) for list method using jest-mock-extended
+- Add e2e test in test/auth.e2e-spec.ts for the new endpoint: admin sees list, regular user gets 403
+- Run `npm run lint` and `npm test` to verify before stopping
+
+## Do NOT
+- Change existing endpoints or DTOs
+- Add new dependencies
+- Modify .env or docker-compose
+- Touch the Postman collection — that I will update myself after.
+
+After implementing, output a concise summary of files changed and test results.

@@ -3,6 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import request from 'supertest';
 import { randomUUID } from 'crypto';
+import * as argon2 from 'argon2';
 import { Role } from '@prisma/client';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -28,6 +29,32 @@ interface MemRefresh {
   ip: string | null;
   createdAt: Date;
 }
+
+interface MemUserWhere {
+  email?: {
+    contains?: string;
+    mode?: 'insensitive';
+  };
+}
+
+interface MemUserFindManyArgs {
+  where?: MemUserWhere;
+  skip?: number;
+  take?: number;
+  orderBy?: {
+    createdAt?: 'asc' | 'desc';
+  };
+}
+
+type MemPublicUser = Pick<MemUser, 'id' | 'email' | 'role' | 'createdAt' | 'updatedAt'>;
+
+const toMemPublicUser = (user: MemUser): MemPublicUser => ({
+  id: user.id,
+  email: user.email,
+  role: user.role,
+  createdAt: user.createdAt,
+  updatedAt: user.updatedAt,
+});
 
 class FakePrisma {
   private users: MemUser[] = [];
@@ -63,6 +90,21 @@ class FakePrisma {
       this.users.find(
         (u) => (where.email && u.email === where.email) || (where.id && u.id === where.id),
       ) ?? null,
+    count: async ({ where }: { where?: MemUserWhere } = {}) =>
+      this.users.filter((u) => this.matchesUser(u, where)).length,
+    findMany: async ({ where, skip = 0, take, orderBy }: MemUserFindManyArgs = {}): Promise<
+      MemPublicUser[]
+    > => {
+      const direction = orderBy?.createdAt ?? 'asc';
+      const sorted = this.users
+        .filter((u) => this.matchesUser(u, where))
+        .sort((a, b) =>
+          direction === 'asc'
+            ? a.createdAt.getTime() - b.createdAt.getTime()
+            : b.createdAt.getTime() - a.createdAt.getTime(),
+        );
+      return sorted.slice(skip, take === undefined ? undefined : skip + take).map(toMemPublicUser);
+    },
   };
 
   refreshToken = {
@@ -125,6 +167,19 @@ class FakePrisma {
   $disconnect = async () => undefined;
   $queryRaw = async () => [1];
   $on = (): void => undefined;
+
+  private matchesUser(user: MemUser, where?: MemUserWhere): boolean {
+    const contains = where?.email?.contains;
+    if (!contains) {
+      return true;
+    }
+
+    if (where?.email?.mode === 'insensitive') {
+      return user.email.toLowerCase().includes(contains.toLowerCase());
+    }
+
+    return user.email.includes(contains);
+  }
 }
 
 const ENV = {
@@ -142,13 +197,24 @@ const ENV = {
   LOG_LEVEL: 'fatal',
 };
 
+const ADMIN_EMAIL = 'admin@example.com';
+const ADMIN_PASSWORD = 'AdminP@ss1';
+
 describe('Auth flow (e2e)', () => {
   let app: INestApplication;
   let fakePrisma: FakePrisma;
+  const requestApp = () => request(app.getHttpServer());
 
   beforeAll(async () => {
     Object.assign(process.env, ENV);
     fakePrisma = new FakePrisma();
+    await fakePrisma.user.create({
+      data: {
+        email: ADMIN_EMAIL,
+        passwordHash: await argon2.hash(ADMIN_PASSWORD),
+        role: Role.ADMIN,
+      },
+    });
 
     const moduleRef: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -175,7 +241,7 @@ describe('Auth flow (e2e)', () => {
   let oldRefresh = '';
 
   it('POST /auth/register issues tokens', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await requestApp()
       .post('/auth/register')
       .send({ email: 'alice@example.com', password: 'StrongP@ss1' })
       .expect(201);
@@ -186,14 +252,14 @@ describe('Auth flow (e2e)', () => {
   });
 
   it('POST /auth/register rejects duplicate', async () => {
-    await request(app.getHttpServer())
+    await requestApp()
       .post('/auth/register')
       .send({ email: 'alice@example.com', password: 'StrongP@ss1' })
       .expect(409);
   });
 
   it('POST /auth/login returns tokens', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await requestApp()
       .post('/auth/login')
       .send({ email: 'alice@example.com', password: 'StrongP@ss1' })
       .expect(200);
@@ -202,18 +268,18 @@ describe('Auth flow (e2e)', () => {
   });
 
   it('POST /auth/login rejects wrong password (no enumeration)', async () => {
-    await request(app.getHttpServer())
+    await requestApp()
       .post('/auth/login')
       .send({ email: 'alice@example.com', password: 'WrongP@ss9' })
       .expect(401);
-    await request(app.getHttpServer())
+    await requestApp()
       .post('/auth/login')
       .send({ email: 'no-such@example.com', password: 'WhateverP@1' })
       .expect(401);
   });
 
   it('GET /auth/me with access token', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await requestApp()
       .get('/auth/me')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
@@ -221,32 +287,53 @@ describe('Auth flow (e2e)', () => {
   });
 
   it('GET /auth/me without token → 401', async () => {
-    await request(app.getHttpServer()).get('/auth/me').expect(401);
+    await requestApp().get('/auth/me').expect(401);
+  });
+
+  it('GET /users returns paginated users for admin', async () => {
+    const loginRes = await requestApp()
+      .post('/auth/login')
+      .send({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      .expect(200);
+
+    const res = await requestApp()
+      .get('/users')
+      .query({ page: 1, limit: 10, search: 'alice' })
+      .set('Authorization', `Bearer ${loginRes.body.accessToken}`)
+      .expect(200);
+
+    expect(res.body).toMatchObject({
+      total: 1,
+      page: 1,
+      limit: 10,
+      totalPages: 1,
+    });
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0]).toMatchObject({ email: 'alice@example.com', role: Role.USER });
+    expect(res.body.data[0]).not.toHaveProperty('passwordHash');
+  });
+
+  it('GET /users rejects regular users', async () => {
+    await requestApp().get('/users').set('Authorization', `Bearer ${accessToken}`).expect(403);
   });
 
   it('POST /auth/refresh rotates tokens', async () => {
     oldRefresh = refreshToken;
-    const res = await request(app.getHttpServer())
-      .post('/auth/refresh')
-      .send({ refreshToken })
-      .expect(200);
+    const res = await requestApp().post('/auth/refresh').send({ refreshToken }).expect(200);
     expect(res.body.refreshToken).not.toBe(oldRefresh);
     refreshToken = res.body.refreshToken;
     accessToken = res.body.accessToken;
   });
 
   it('reuse of old refresh token revokes entire family', async () => {
-    await request(app.getHttpServer())
-      .post('/auth/refresh')
-      .send({ refreshToken: oldRefresh })
-      .expect(403);
+    await requestApp().post('/auth/refresh').send({ refreshToken: oldRefresh }).expect(403);
 
     // Even the now-rotated refresh should be invalidated after family revoke
-    await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken }).expect(403);
+    await requestApp().post('/auth/refresh').send({ refreshToken }).expect(403);
   });
 
   it('POST /auth/register: validation rejects weak password', async () => {
-    await request(app.getHttpServer())
+    await requestApp()
       .post('/auth/register')
       .send({ email: 'bob@example.com', password: 'weak' })
       .expect(400);
