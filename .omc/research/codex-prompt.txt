@@ -1,0 +1,22 @@
+Read these files and give a SECURITY-focused second opinion on the JWT auth implementation. Read-only — do not modify anything. Files:
+- src/auth/auth.service.ts (register, login, refresh with reuse-detection, logout, family revoke)
+- src/auth/token.service.ts (JWT sign/verify, sha256 hash of jti)
+- src/auth/strategies/jwt-refresh.strategy.ts (refresh extraction)
+- src/auth/auth.controller.ts (endpoints with @Throttle overrides)
+- src/main.ts (helmet, CORS, ValidationPipe, trust proxy)
+- src/config/env.schema.ts (zod env validation)
+- prisma/schema.prisma
+
+Audit:
+1. Is refresh-token rotation correct? Race conditions?
+2. Reuse detection (token theft) — does it correctly revoke the family?
+3. JWT secret separation, issuer/audience claims, alg pinning
+4. Argon2 params reasonable?
+5. Timing-safe login (no user enumeration)?
+6. CORS/helmet config sane?
+7. Any plaintext refresh stored?
+8. Rate-limit placement on auth endpoints
+9. Logging redaction
+10. Any other critical issue
+
+Be concise. CRITICAL / HIGH / MEDIUM / LOW + final verdict APPROVED or NEEDS_CHANGES. Under 400 words.

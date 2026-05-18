@@ -1,0 +1,52 @@
+name: auth-api
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: auth-api-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-authapi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-authapi}
+      POSTGRES_DB: ${POSTGRES_DB:-auth_db}
+    ports:
+      - "${DB_HOST_PORT:-5433}:5432"
+    volumes:
+      - auth-api-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-authapi}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auth-api-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3100
+      DATABASE_URL: postgresql://${POSTGRES_USER:-authapi}:${POSTGRES_PASSWORD:-authapi}@db:5432/${POSTGRES_DB:-auth_db}?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET}
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 7d
+      THROTTLE_TTL: 60
+      THROTTLE_LIMIT: 100
+      TRUST_PROXY_HOPS: 1
+      JWT_CLOCK_TOLERANCE_SEC: 30
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3100}
+      ENABLE_SWAGGER: ${ENABLE_SWAGGER:-true}
+      LOG_LEVEL: info
+    ports:
+      - "${API_HOST_PORT:-3100}:3100"
+    command: sh -c "npx prisma migrate deploy && node dist/main.js"
+
+volumes:
+  auth-api-db-data:
+    name: auth-api-db-data
