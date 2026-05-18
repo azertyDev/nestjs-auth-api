@@ -1,1 +1,25 @@
-{"environment":{"name":"NestJS Auth — local","values":[{"key":"baseUrl","value":"http://localhost:3100","enabled":true,"type":"default"},{"key":"email","value":"alice+1779090151667@example.com","enabled":true,"type":"default"},{"key":"password","value":"StrongP@ss1","enabled":true,"type":"secret"}]}}
+{
+  "environment": {
+    "name": "NestJS Auth — local",
+    "values": [
+      {
+        "key": "baseUrl",
+        "value": "http://localhost:3100",
+        "enabled": true,
+        "type": "default"
+      },
+      {
+        "key": "email",
+        "value": "alice+1779090968721@example.com",
+        "enabled": true,
+        "type": "default"
+      },
+      {
+        "key": "password",
+        "value": "StrongP@ss1",
+        "enabled": true,
+        "type": "secret"
+      }
+    ]
+  }
+}

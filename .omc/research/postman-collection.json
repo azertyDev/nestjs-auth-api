@@ -1,1 +1,692 @@
-{"collection":{"info":{"name":"NestJS Auth API","description":"Full flow with token rotation + reuse detection","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},"variable":[{"key":"baseUrl","value":"http://localhost:3100","type":"string"},{"key":"accessToken","value":"","type":"string"},{"key":"refreshToken","value":"","type":"string"},{"key":"oldRefreshToken","value":"","type":"string"},{"key":"userId","value":"","type":"string"},{"key":"email","value":"alice@example.com","type":"string"},{"key":"password","value":"StrongP@ss1","type":"string"}],"item":[{"name":"Auth","item":[{"name":"Register","event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test(\"201\",()=>pm.response.to.have.status(201));","const j = pm.response.json();","if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);","if (j.refreshToken) {","  pm.collectionVariables.set('oldRefreshToken', pm.collectionVariables.get('refreshToken') || '');","  pm.collectionVariables.set('refreshToken', j.refreshToken);","}"]}}],"request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}","options":{"raw":{"language":"json"}}},"url":{"raw":"{{baseUrl}}/auth/register","host":["{{baseUrl}}"],"path":["auth","register"]}}},{"name":"Login","event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test(\"200\",()=>pm.response.to.have.status(200));","const j = pm.response.json();","if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);","if (j.refreshToken) {","  pm.collectionVariables.set('oldRefreshToken', pm.collectionVariables.get('refreshToken') || '');","  pm.collectionVariables.set('refreshToken', j.refreshToken);","}"]}}],"request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}","options":{"raw":{"language":"json"}}},"url":{"raw":"{{baseUrl}}/auth/login","host":["{{baseUrl}}"],"path":["auth","login"]}}},{"name":"Login wrong","event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test(\"401\",()=>pm.response.to.have.status(401));"]}}],"request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"email\": \"{{email}}\",\n  \"password\": \"WrongP@ss9\"\n}","options":{"raw":{"language":"json"}}},"url":{"raw":"{{baseUrl}}/auth/login","host":["{{baseUrl}}"],"path":["auth","login"]}}},{"name":"Me","event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test(\"200\",()=>pm.response.to.have.status(200));","const j = pm.response.json();","pm.test(\"email matches\",()=>pm.expect(j.email).to.eql(pm.variables.get(\"email\")));","if (j.id) pm.collectionVariables.set(\"userId\", j.id);"]}}],"request":{"method":"GET","header":[{"key":"Content-Type","value":"application/json"}],"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{accessToken}}","type":"string"}]},"url":{"raw":"{{baseUrl}}/auth/me","host":["{{baseUrl}}"],"path":["auth","me"]}}},{"name":"Me no token","event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test(\"401\",()=>pm.response.to.have.status(401));"]}}],"request":{"method":"GET","header":[{"key":"Content-Type","value":"application/json"}],"url":{"raw":"{{baseUrl}}/auth/me","host":["{{baseUrl}}"],"path":["auth","me"]}}},{"name":"Refresh","event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test(\"200\",()=>pm.response.to.have.status(200));","const prev = pm.collectionVariables.get(\"refreshToken\");","pm.test(\"rotated\",()=>pm.expect(pm.response.json().refreshToken).to.not.eql(prev));","const j = pm.response.json();","if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);","if (j.refreshToken) {","  pm.collectionVariables.set('oldRefreshToken', pm.collectionVariables.get('refreshToken') || '');","  pm.collectionVariables.set('refreshToken', j.refreshToken);","}"]}}],"request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"refreshToken\": \"{{refreshToken}}\"\n}","options":{"raw":{"language":"json"}}},"url":{"raw":"{{baseUrl}}/auth/refresh","host":["{{baseUrl}}"],"path":["auth","refresh"]}}},{"name":"Refresh REUSE old","event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test(\"403\",()=>pm.response.to.have.status(403));","pm.test(\"revoke msg\",()=>pm.expect(pm.response.json().message).to.match(/theft|reuse/i));"]}}],"request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"refreshToken\": \"{{oldRefreshToken}}\"\n}","options":{"raw":{"language":"json"}}},"url":{"raw":"{{baseUrl}}/auth/refresh","host":["{{baseUrl}}"],"path":["auth","refresh"]}}},{"name":"Logout","event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test(\"204\",()=>pm.response.to.have.status(204));"]}}],"request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{accessToken}}","type":"string"}]},"body":{"mode":"raw","raw":"{\n  \"refreshToken\": \"{{refreshToken}}\"\n}","options":{"raw":{"language":"json"}}},"url":{"raw":"{{baseUrl}}/auth/logout","host":["{{baseUrl}}"],"path":["auth","logout"]}}},{"name":"Logout-all","event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test(\"204\",()=>pm.response.to.have.status(204));"]}}],"request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{accessToken}}","type":"string"}]},"url":{"raw":"{{baseUrl}}/auth/logout-all","host":["{{baseUrl}}"],"path":["auth","logout-all"]}}}]},{"name":"Users","item":[{"name":"Get user by id","event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test(\"200\",()=>pm.response.to.have.status(200));","pm.test(\"id matches\",()=>pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"userId\")));"]}}],"request":{"method":"GET","header":[{"key":"Content-Type","value":"application/json"}],"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{accessToken}}","type":"string"}]},"url":{"raw":"{{baseUrl}}/users/{{userId}}","host":["{{baseUrl}}"],"path":["users","{{userId}}"]}}}]},{"name":"Health","item":[{"name":"Health","event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test(\"200\",()=>pm.response.to.have.status(200));","pm.test(\"DB up\",()=>pm.expect(pm.response.json().status).to.eql(\"ok\"));"]}}],"request":{"method":"GET","header":[{"key":"Content-Type","value":"application/json"}],"url":{"raw":"{{baseUrl}}/health","host":["{{baseUrl}}"],"path":["health"]}}}]}]}}
+{
+  "collection": {
+    "info": {
+      "name": "NestJS Auth API",
+      "description": "Full flow + collection-level auto-refresh + verification",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "event": [
+      {
+        "listen": "prerequest",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "// Collection-level auto-refresh: if access expires in <30s, rotate via /auth/refresh",
+            "const access = pm.collectionVariables.get('accessToken');",
+            "const refresh = pm.collectionVariables.get('refreshToken');",
+            "if (!access || !refresh) return;",
+            "const url = pm.request.url.toString();",
+            "if (url.includes('/auth/refresh') || url.includes('/auth/register') || url.includes('/auth/login')) return;",
+            "let exp;",
+            "try {",
+            "  const part = access.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');",
+            "  const pad = part + '='.repeat((4 - part.length % 4) % 4);",
+            "  exp = JSON.parse(Buffer.from(pad,'base64').toString('utf8')).exp;",
+            "} catch (e) { return; }",
+            "const now = Math.floor(Date.now()/1000);",
+            "if (exp - now > 30) return;",
+            "console.log('access expiring in', exp - now, 's — auto-refresh');",
+            "const beforeAccess = access;",
+            "pm.sendRequest({",
+            "  url: pm.variables.get('baseUrl') + '/auth/refresh',",
+            "  method: 'POST',",
+            "  header: { 'Content-Type': 'application/json' },",
+            "  body: { mode: 'raw', raw: JSON.stringify({ refreshToken: refresh }) },",
+            "}, (err, res) => {",
+            "  if (err || res.code !== 200) { console.warn('auto-refresh failed', err || res.code); return; }",
+            "  const j = res.json();",
+            "  pm.collectionVariables.set('oldRefreshToken', refresh);",
+            "  pm.collectionVariables.set('accessToken', j.accessToken);",
+            "  pm.collectionVariables.set('refreshToken', j.refreshToken);",
+            "  pm.collectionVariables.set('autoRefreshFired', '1');",
+            "  pm.collectionVariables.set('autoRefreshPrevAccess', beforeAccess);",
+            "  console.log('auto-refresh ok, new access set');",
+            "});"
+          ]
+        }
+      }
+    ],
+    "variable": [
+      {
+        "key": "baseUrl",
+        "value": "http://localhost:3100",
+        "type": "string"
+      },
+      {
+        "key": "accessToken",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "key": "refreshToken",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "key": "oldRefreshToken",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "key": "userId",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "key": "autoRefreshFired",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "key": "autoRefreshPrevAccess",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "key": "email",
+        "value": "alice@example.com",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "StrongP@ss1",
+        "type": "string"
+      }
+    ],
+    "item": [
+      {
+        "name": "Auth",
+        "item": [
+          {
+            "name": "Register",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"201\",()=>pm.response.to.have.status(201));",
+                    "const j = pm.response.json();",
+                    "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);",
+                    "if (j.refreshToken) {",
+                    "  pm.collectionVariables.set('oldRefreshToken', pm.collectionVariables.get('refreshToken') || '');",
+                    "  pm.collectionVariables.set('refreshToken', j.refreshToken);",
+                    "}"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "{{baseUrl}}/auth/register",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "auth",
+                  "register"
+                ]
+              }
+            }
+          },
+          {
+            "name": "Login",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"200\",()=>pm.response.to.have.status(200));",
+                    "const j = pm.response.json();",
+                    "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);",
+                    "if (j.refreshToken) {",
+                    "  pm.collectionVariables.set('oldRefreshToken', pm.collectionVariables.get('refreshToken') || '');",
+                    "  pm.collectionVariables.set('refreshToken', j.refreshToken);",
+                    "}"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "{{baseUrl}}/auth/login",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "auth",
+                  "login"
+                ]
+              }
+            }
+          },
+          {
+            "name": "Login wrong",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"401\",()=>pm.response.to.have.status(401));"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"WrongP@ss9\"\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "{{baseUrl}}/auth/login",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "auth",
+                  "login"
+                ]
+              }
+            }
+          },
+          {
+            "name": "Me",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"200\",()=>pm.response.to.have.status(200));",
+                    "const j = pm.response.json();",
+                    "pm.test(\"email matches\",()=>pm.expect(j.email).to.eql(pm.variables.get(\"email\")));",
+                    "if (j.id) pm.collectionVariables.set(\"userId\", j.id);"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{accessToken}}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "url": {
+                "raw": "{{baseUrl}}/auth/me",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "auth",
+                  "me"
+                ]
+              }
+            }
+          },
+          {
+            "name": "Me no token",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"401\",()=>pm.response.to.have.status(401));"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/auth/me",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "auth",
+                  "me"
+                ]
+              }
+            }
+          },
+          {
+            "name": "Force-expire access (setup)",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('health ok (setup)',()=>pm.response.to.have.status(200));",
+                    "// force-expire current access token by tampering its payload exp claim",
+                    "const a = pm.collectionVariables.get('accessToken');",
+                    "const [h,p,s] = a.split('.');",
+                    "const pad = p.replace(/-/g,'+').replace(/_/g,'/');",
+                    "const padded = pad + '='.repeat((4 - pad.length % 4) % 4);",
+                    "const payload = JSON.parse(Buffer.from(padded,'base64').toString('utf8'));",
+                    "payload.exp = Math.floor(Date.now()/1000) - 60;",
+                    "const newP = Buffer.from(JSON.stringify(payload)).toString('base64').replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');",
+                    "pm.collectionVariables.set('autoRefreshFired','');",
+                    "pm.collectionVariables.set('autoRefreshPrevAccess','');",
+                    "pm.collectionVariables.set('accessToken', h+'.'+newP+'.'+s);",
+                    "console.log('access exp forced to past, next request must auto-refresh');"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/health",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "health"
+                ]
+              }
+            }
+          },
+          {
+            "name": "Auto-refresh test (Me)",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('200 OK after auto-refresh',()=>pm.response.to.have.status(200));",
+                    "pm.test('auto-refresh actually fired',()=>pm.expect(pm.collectionVariables.get('autoRefreshFired')).to.eql('1'));",
+                    "pm.test('access token rotated',()=>{",
+                    "  const prev = pm.collectionVariables.get('autoRefreshPrevAccess');",
+                    "  const cur  = pm.collectionVariables.get('accessToken');",
+                    "  pm.expect(cur).to.not.eql(prev);",
+                    "  pm.expect(cur).to.not.equal('');",
+                    "});",
+                    "const j = pm.response.json();",
+                    "pm.test('email matches',()=>pm.expect(j.email).to.eql(pm.variables.get('email')));"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{accessToken}}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "url": {
+                "raw": "{{baseUrl}}/auth/me",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "auth",
+                  "me"
+                ]
+              }
+            }
+          },
+          {
+            "name": "Refresh",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"200\",()=>pm.response.to.have.status(200));",
+                    "const prev = pm.collectionVariables.get(\"refreshToken\");",
+                    "pm.test(\"rotated\",()=>pm.expect(pm.response.json().refreshToken).to.not.eql(prev));",
+                    "const j = pm.response.json();",
+                    "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);",
+                    "if (j.refreshToken) {",
+                    "  pm.collectionVariables.set('oldRefreshToken', pm.collectionVariables.get('refreshToken') || '');",
+                    "  pm.collectionVariables.set('refreshToken', j.refreshToken);",
+                    "}"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "{{baseUrl}}/auth/refresh",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "auth",
+                  "refresh"
+                ]
+              }
+            }
+          },
+          {
+            "name": "Refresh REUSE old",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"403\",()=>pm.response.to.have.status(403));",
+                    "pm.test(\"revoke msg\",()=>pm.expect(pm.response.json().message).to.match(/theft|reuse/i));"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"refreshToken\": \"{{oldRefreshToken}}\"\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "{{baseUrl}}/auth/refresh",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "auth",
+                  "refresh"
+                ]
+              }
+            }
+          },
+          {
+            "name": "Logout",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"204\",()=>pm.response.to.have.status(204));"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{accessToken}}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "{{baseUrl}}/auth/logout",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "auth",
+                  "logout"
+                ]
+              }
+            }
+          },
+          {
+            "name": "Logout-all",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"204\",()=>pm.response.to.have.status(204));"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{accessToken}}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "url": {
+                "raw": "{{baseUrl}}/auth/logout-all",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "auth",
+                  "logout-all"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Users",
+        "item": [
+          {
+            "name": "Get user by id",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"200\",()=>pm.response.to.have.status(200));",
+                    "pm.test(\"id matches\",()=>pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"userId\")));"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{accessToken}}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "url": {
+                "raw": "{{baseUrl}}/users/{{userId}}",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "users",
+                  "{{userId}}"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Health",
+        "item": [
+          {
+            "name": "Health",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"200\",()=>pm.response.to.have.status(200));",
+                    "pm.test(\"DB up\",()=>pm.expect(pm.response.json().status).to.eql(\"ok\"));"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/health",
+                "host": [
+                  "{{baseUrl}}"
+                ],
+                "path": [
+                  "health"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
